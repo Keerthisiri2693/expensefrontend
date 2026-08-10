@@ -1,18 +1,85 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from "expo-router";
+import { useEffect } from "react";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import {
+  ThemeProvider,
+} from "../../context/ThemeContext";
 
-SplashScreen.preventAutoHideAsync();
+import {
+  initExpenseCache,
+} from "../../database/expenseCache";
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+
+export default function RootLayout() {
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+
+        await initExpenseCache();
+
+        console.log(
+          "✅ APP DATABASE INITIALIZED"
+        );
+
+      } catch (error) {
+
+        console.log(
+          "❌ APP DATABASE INIT ERROR:",
+          error
+        );
+
+      }
+    };
+
+    initializeApp();
+
+  }, []);
+
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
+    <ThemeProvider>
+
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+
+        <Stack.Screen
+          name="index"
+        />
+
+        <Stack.Screen
+          name="loginscreen"
+        />
+
+        <Stack.Screen
+          name="dashboard"
+        />
+
+        <Stack.Screen
+          name="raiseExpense"
+        />
+
+        <Stack.Screen
+          name="expenselist"
+        />
+
+        <Stack.Screen
+          name="profile"
+        />
+
+        <Stack.Screen
+          name="reportscreen"
+        />
+
+        <Stack.Screen
+          name="editProfile"
+        />
+
+      </Stack>
+
     </ThemeProvider>
   );
 }
