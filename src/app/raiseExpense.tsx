@@ -70,7 +70,7 @@ export default function RaiseExpenseScreen() {
     } = useTheme();
 
 
-  const API_BASE_URL = "http://192.168.1.7:8000";
+  const API_BASE_URL = "https://expensebackend-tdxz.onrender.com";
 
   // ============================================================
   // RECEIPT

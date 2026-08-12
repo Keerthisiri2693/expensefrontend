@@ -13,7 +13,7 @@ import { fetch as expoFetch } from "expo/fetch";
 
 
 
-const API_BASE_URL = "http://192.168.1.7:8000";
+const API_BASE_URL = "https://expensebackend-tdxz.onrender.com";
 
 // ============================================================
 // LOGIN
@@ -36,6 +36,7 @@ export const loginUser = async (
 
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
 
         body: JSON.stringify({
@@ -46,17 +47,30 @@ export const loginUser = async (
     );
 
     console.log("🟢 RESPONSE RECEIVED");
-    console.log(
-      "📡 HTTP STATUS:",
-      response.status
-    );
+    console.log("📡 HTTP STATUS:", response.status);
+    console.log("📡 RESPONSE URL:", response.url);
 
-    const data = await response.json();
+    // Read as text first
+    const responseText = await response.text();
 
-    console.log(
-      "📦 RESPONSE DATA:",
-      data
-    );
+    console.log("📄 RAW RESPONSE:", responseText);
+
+    let data: any;
+
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.log(
+        "❌ RESPONSE IS NOT JSON:",
+        responseText
+      );
+
+      throw new Error(
+        `Server returned ${response.status}: ${responseText}`
+      );
+    }
+
+    console.log("📦 RESPONSE DATA:", data);
 
     if (!response.ok) {
       throw new Error(
@@ -69,7 +83,6 @@ export const loginUser = async (
     return data;
 
   } catch (error: any) {
-
     console.log(
       "❌ LOGIN API ERROR:",
       error
@@ -646,7 +659,7 @@ export const uploadReceipt = async (
 
     const response =
       await expoFetch(
-        "http://192.168.1.7:8000/expenses/upload-receipt",
+        "https://expensebackend-tdxz.onrender.com/expenses/upload-receipt",
         {
           method: "POST",
 
@@ -795,7 +808,7 @@ export const uploadCameraReceipt = async (
 
     const response =
       await FileSystem.uploadAsync(
-        "http://192.168.1.7:8000/expenses/upload-receipt",
+        "https://expensebackend-tdxz.onrender.com/expenses/upload-receipt",
         uri,
         {
           httpMethod: "POST",
@@ -891,7 +904,7 @@ export const getReportSummary = async (
   }
 
   const response = await fetch(
-    `http://192.168.1.7:8000/reports/summary?period=${encodeURIComponent(
+    `https://expensebackend-tdxz.onrender.com/reports/summary?period=${encodeURIComponent(
       period
     )}`,
     {

@@ -163,7 +163,7 @@ export default function ExpenseListScreen() {
   // ==========================================================
 
   const API_BASE_URL =
-    "http://192.168.1.7:8000";
+    "https://expensebackend-tdxz.onrender.com";
 
 
   // ==========================================================
