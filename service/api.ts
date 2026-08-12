@@ -474,6 +474,138 @@ export const getExpenseById = async (
   }
 };
 
+
+// ============================================================
+// UPDATE EXPENSE
+// PUT /expenses/{id}
+// ============================================================
+
+export const updateExpense = async (
+  expenseId: number,
+  userId: number,
+  expense: {
+    title: string;
+    category: string;
+    amount: number;
+    expense_date: string;
+    description?: string;
+    receipt_path?: string;
+  }
+) => {
+  try {
+    console.log(
+      "✏️ UPDATE EXPENSE API:",
+      `${API_BASE_URL}/expenses/${expenseId}`
+    );
+
+    console.log("🆔 Expense ID:", expenseId);
+    console.log("👤 User ID:", userId);
+
+    const token =
+      await AsyncStorage.getItem(
+        "access_token"
+      );
+
+    if (!token) {
+      throw new Error(
+        "Authentication token not found. Please login again."
+      );
+    }
+
+    const requestBody = {
+      title: expense.title.trim(),
+
+      category: expense.category.trim(),
+
+      amount: expense.amount,
+
+      expense_date: expense.expense_date,
+
+      description:
+        expense.description?.trim() || null,
+
+      receipt_path:
+        expense.receipt_path || null,
+    };
+
+    console.log(
+      "📤 UPDATE REQUEST BODY:",
+      requestBody
+    );
+
+    const response = await fetch(
+      `${API_BASE_URL}/expenses/${expenseId}?user_id=${userId}`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          Accept: "application/json",
+
+          Authorization:
+            `Bearer ${token}`,
+        },
+
+        body: JSON.stringify(
+          requestBody
+        ),
+      }
+    );
+
+    console.log(
+      "📡 UPDATE EXPENSE STATUS:",
+      response.status
+    );
+
+    const responseText =
+      await response.text();
+
+    console.log(
+      "📥 UPDATE EXPENSE RAW RESPONSE:",
+      responseText
+    );
+
+    let data: any;
+
+    try {
+      data = JSON.parse(
+        responseText
+      );
+    } catch {
+      throw new Error(
+        `Invalid server response: ${responseText}`
+      );
+    }
+
+    console.log(
+      "📦 UPDATE EXPENSE RESPONSE:",
+      data
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        data?.detail ||
+          data?.message ||
+          "Failed to update expense"
+      );
+    }
+
+    return data;
+
+  } catch (error: any) {
+    console.log(
+      "❌ UPDATE EXPENSE ERROR:",
+      error
+    );
+
+    throw new Error(
+      error?.message ||
+        "Unable to update expense"
+    );
+  }
+};
+
 // ============================================================
 // DELETE EXPENSE
 // ============================================================
@@ -1136,3 +1268,6 @@ export const updateProfile = async (
     throw error;
   }
 };
+
+
+

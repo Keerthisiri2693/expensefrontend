@@ -54,15 +54,15 @@ export default function RaiseExpenseScreen() {
   const [description, setDescription] = useState("");
   const [showDatePicker, setShowDatePicker] =
   useState(false);
-
+ const [receiptPath, setReceiptPath] = useState<string | null>(null);
+  const [expenseId, setExpenseId] = useState<number | null>(null);
 
   const { id } =
   useLocalSearchParams<{
     id?: string;
   }>();
 
-  const isEditMode =
-  !!id;
+ 
 
    const {
     darkMode,
@@ -93,7 +93,7 @@ export default function RaiseExpenseScreen() {
   const [loading, setLoading] =
     useState(false);
 
-
+  const isEditMode = !!id;
 
     useEffect(() => {
 
@@ -108,12 +108,35 @@ export default function RaiseExpenseScreen() {
 }, [id]);
 
 
+const convertDateToApiFormat = (date: string) => {
+  if (!date) return "";
+
+  // Already ISO format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+
+  // DD/MM/YYYY → YYYY-MM-DD
+  const parts = date.split("/");
+
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+
+    return `${year}-${month.padStart(
+      2,
+      "0"
+    )}-${day.padStart(2, "0")}`;
+  }
+
+  return date;
+};
+
+
+
 const loadExpenseForEdit = async (
   expenseId: string
 ) => {
-
   try {
-
     setLoading(true);
 
     console.log(
@@ -132,21 +155,16 @@ const loadExpenseForEdit = async (
       );
     }
 
-    const response =
-      await fetch(
-        `${API_BASE_URL}/expenses/${expenseId}`,
-        {
-          method: "GET",
-
-          headers: {
-            Accept:
-              "application/json",
-
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
-      );
+    const response = await fetch(
+      `${API_BASE_URL}/expenses/${expenseId}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     const result =
       await response.json();
@@ -159,8 +177,8 @@ const loadExpenseForEdit = async (
     if (!response.ok) {
       throw new Error(
         result?.detail ||
-        result?.message ||
-        "Unable to load expense."
+          result?.message ||
+          "Unable to load expense."
       );
     }
 
@@ -191,25 +209,22 @@ const loadExpenseForEdit = async (
       expense.description || ""
     );
 
-    // Date
-    if (
-      expense.expense_date
-    ) {
+    // ==========================================
+    // DATE
+    // ==========================================
 
-      const date =
-        new Date(
-          expense.expense_date
-        );
+    if (expense.expense_date) {
+      const date = new Date(
+        expense.expense_date
+      );
 
-      const day =
-        String(
-          date.getDate()
-        ).padStart(2, "0");
+      const day = String(
+        date.getDate()
+      ).padStart(2, "0");
 
-      const month =
-        String(
-          date.getMonth() + 1
-        ).padStart(2, "0");
+      const month = String(
+        date.getMonth() + 1
+      ).padStart(2, "0");
 
       const year =
         date.getFullYear();
@@ -220,7 +235,6 @@ const loadExpenseForEdit = async (
     }
 
   } catch (error: any) {
-
     console.log(
       "❌ LOAD EDIT ERROR:",
       error
@@ -233,9 +247,7 @@ const loadExpenseForEdit = async (
     );
 
   } finally {
-
     setLoading(false);
-
   }
 };
   // ============================================================
@@ -523,363 +535,219 @@ const scanReceipt = async () => {
   // SUBMIT EXPENSE
   // ============================================================
 
+
   const submitExpense = async () => {
+  try {
+    setLoading(true);
 
-    console.log(
-      "🚀 SUBMIT EXPENSE START"
-    );
+    const token =
+      await AsyncStorage.getItem(
+        "access_token"
+      );
 
+    if (!token) {
+      throw new Error(
+        "Login token not found."
+      );
+    }
 
-    // ==========================================================
+    // ==========================================
     // VALIDATION
-    // ==========================================================
+    // ==========================================
 
-    if (
-      !title.trim() ||
-      !category.trim() ||
-      !amount.trim() ||
-      !expenseDate.trim()
-    ) {
-
+    if (!title.trim()) {
       Alert.alert(
         "Validation",
-        "Please fill all required fields."
+        "Please enter expense title."
       );
-
       return;
     }
 
-
-    // ==========================================================
-    // RECEIPT UPLOAD CHECK
-    // ==========================================================
-
-    if (uploadingReceipt) {
-
+    if (!category) {
       Alert.alert(
-        "Please Wait",
-        "Receipt is still uploading."
+        "Validation",
+        "Please select a category."
       );
-
       return;
     }
 
-
-    // If user selected a receipt but upload failed
-    if (
-      fileName &&
-      !uploadedReceiptPath
-    ) {
-
+    if (!amount || Number(amount) <= 0) {
       Alert.alert(
-        "Receipt",
-        "Please upload the receipt again."
+        "Validation",
+        "Please enter a valid amount."
       );
-
       return;
     }
 
+    // ==========================================
+    // PAYLOAD
+    // ==========================================
 
-    try {
+    const apiExpenseDate =
+  convertDateToApiFormat(expenseDate);
 
-      setLoading(true);
+console.log(
+  "📅 DISPLAY DATE:",
+  expenseDate
+);
 
+console.log(
+  "📅 API DATE:",
+  apiExpenseDate
+);
 
-      // ========================================================
-      // GET USER
-      // ========================================================
+const expenseData = {
+  title: title.trim(),
+  category: category.trim(),
+  amount: Number(amount),
+  expense_date: apiExpenseDate,
+  description:
+    description?.trim() || undefined,
+  receipt_path:
+    receiptPath || undefined,
+};
 
+    console.log(
+      "📦 EXPENSE DATA:",
+      expenseData
+    );
+
+    // ==========================================
+    // EDIT → PUT
+    // ==========================================
+
+    if (id) {
       console.log(
-        "🔍 Getting logged-in user..."
+        "✏️ UPDATING EXPENSE:",
+        String(id)
       );
 
+      const response = await fetch(
+        `${API_BASE_URL}/expenses/${String(id)}`,
+        {
+          method: "PUT",
 
-      const userString =
-        await AsyncStorage.getItem(
-          "user"
-        );
+          headers: {
+            Accept:
+              "application/json",
 
+            "Content-Type":
+              "application/json",
 
-      console.log(
-        "📦 Stored User:",
-        userString
+            Authorization:
+              `Bearer ${token}`,
+          },
+
+          body: JSON.stringify(
+            expenseData
+          ),
+        }
       );
 
+      const result =
+        await response.json();
 
-      if (!userString) {
+      console.log(
+        "📥 UPDATE RESPONSE:",
+        result
+      );
 
-        Alert.alert(
-          "Login Required",
-          "Please login again.",
-          [
-            {
-              text: "OK",
-
-              onPress: () =>
-                router.replace(
-                  "/loginscreen"
-                ),
-            },
-          ]
+      if (!response.ok) {
+        throw new Error(
+          result?.detail ||
+            result?.message ||
+            "Unable to update expense."
         );
-
-        return;
       }
-
-
-      const user =
-        JSON.parse(userString);
-
-
-      console.log(
-        "👤 Parsed User:",
-        user
-      );
-
-
-      if (!user?.id) {
-
-        Alert.alert(
-          "Error",
-          "User ID not found."
-        );
-
-        return;
-      }
-
-
-      console.log(
-        "🆔 User ID:",
-        user.id
-      );
-
-
-      // ========================================================
-      // AMOUNT
-      // ========================================================
-
-      const expenseAmount =
-        Number(
-          amount.replace(
-            /,/g,
-            ""
-          )
-        );
-
-
-      console.log(
-        "💰 Converted Amount:",
-        expenseAmount
-      );
-
-
-      if (
-        isNaN(expenseAmount) ||
-        expenseAmount <= 0
-      ) {
-
-        Alert.alert(
-          "Validation",
-          "Please enter a valid amount."
-        );
-
-        return;
-      }
-
-
-      // ========================================================
-      // DATE
-      // ========================================================
-
-      let formattedDate =
-        expenseDate.trim();
-
-
-      const parts =
-        formattedDate.split("/");
-
-
-      if (
-        parts.length === 3
-      ) {
-
-        formattedDate =
-          `${parts[2]}-${parts[1].padStart(
-            2,
-            "0"
-          )}-${parts[0].padStart(
-            2,
-            "0"
-          )}`;
-      }
-
-
-      console.log(
-        "📅 Formatted Date:",
-        formattedDate
-      );
-
-
-      // ========================================================
-      // RECEIPT
-      // ========================================================
-
-      console.log(
-        "📎 LOCAL RECEIPT URI:",
-        receiptUri
-      );
-
-
-      console.log(
-        "📎 SERVER RECEIPT PATH:",
-        uploadedReceiptPath
-      );
-
-
-      console.log(
-        "📄 RECEIPT NAME:",
-        fileName
-      );
-
-
-      // ========================================================
-      // EXPENSE DATA
-      // ========================================================
-
-      const expenseData = {
-
-        title:
-          title.trim(),
-
-        category:
-          category.trim(),
-
-        amount:
-          expenseAmount,
-
-        expense_date:
-          formattedDate,
-
-        description:
-          description.trim() ||
-          undefined,
-
-        // IMPORTANT:
-        // NEVER send receiptUri here.
-        //
-        // Send the path returned
-        // from FastAPI upload API.
-
-        receipt_path:
-          uploadedReceiptPath ||
-          undefined,
-      };
-
-
-      console.log(
-        "📤 SENDING EXPENSE:",
-        expenseData
-      );
-
-
-      // ========================================================
-      // API
-      // ========================================================
-
-      const data =
-        await createExpenseApi(
-          Number(user.id),
-          expenseData
-        );
-
-
-      console.log(
-        "✅ EXPENSE API SUCCESS"
-      );
-
-
-      console.log(
-        "📦 SERVER RESPONSE:",
-        data
-      );
-
-
-      // ========================================================
-      // SUCCESS
-      // ========================================================
 
       Alert.alert(
         "Success",
-        "Expense submitted successfully.",
+        "Expense updated successfully.",
         [
           {
             text: "OK",
-
-            onPress: () => {
-
-              setTitle("");
-
-              setCategory("");
-
-              setAmount("");
-
-              setExpenseDate("");
-
-              setDescription("");
-
-              setFileName("");
-
-              setReceiptUri("");
-
-              setUploadedReceiptPath("");
-
-              router.back();
-            },
+            // Expo Router:
+            onPress: () => router.back(),
           },
         ]
       );
 
-
-    } catch (error: any) {
-
-      console.log(
-        "================================"
-      );
-
-      console.log(
-        "❌ EXPENSE SUBMIT ERROR"
-      );
-
-      console.log(
-        "❌ ERROR:",
-        error
-      );
-
-      console.log(
-        "❌ MESSAGE:",
-        error?.message
-      );
-
-      console.log(
-        "================================"
-      );
-
-
-      Alert.alert(
-        "Error",
-        error?.message ||
-          "Failed to submit expense."
-      );
-
-
-    } finally {
-
-      setLoading(false);
-
+      return;
     }
 
-  };
+    // ==========================================
+    // CREATE → POST
+    // ==========================================
 
+    console.log(
+      "🆕 CREATING EXPENSE"
+    );
+
+    const response = await fetch(
+      `${API_BASE_URL}/expenses`,
+      {
+        method: "POST",
+
+        headers: {
+          Accept:
+            "application/json",
+
+          "Content-Type":
+            "application/json",
+
+          Authorization:
+            `Bearer ${token}`,
+        },
+
+        body: JSON.stringify(
+          expenseData
+        ),
+      }
+    );
+
+    const result =
+      await response.json();
+
+    console.log(
+      "📥 CREATE RESPONSE:",
+      result
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        result?.detail ||
+          result?.message ||
+          "Unable to submit expense."
+      );
+    }
+
+    Alert.alert(
+      "Success",
+      "Expense submitted successfully.",
+      [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]
+    );
+
+  } catch (error: any) {
+    console.log(
+      "❌ SUBMIT EXPENSE ERROR:",
+      error
+    );
+
+    Alert.alert(
+      "Error",
+      error?.message ||
+        "Unable to save expense."
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ============================================================
   // UI
@@ -1364,51 +1232,49 @@ const scanReceipt = async () => {
         {/* ====================================================
             SUBMIT
         ==================================================== */}
+         
 
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
+         <TouchableOpacity
+  style={[
+    styles.submitButton,
+    (loading || uploadingReceipt) &&
+      styles.submitDisabled,
+  ]}
+  onPress={submitExpense}
+  disabled={loading || uploadingReceipt}
+>
+  {loading || uploadingReceipt ? (
+    <>
+      <ActivityIndicator color="#FFFFFF" />
 
-            (loading ||
-              uploadingReceipt) &&
-              styles.submitDisabled,
-          ]}
-          onPress={
-            submitExpense
-          }
-          disabled={
-            loading ||
-            uploadingReceipt
-          }
-        >
+      <Text style={styles.submitText}>
+        {uploadingReceipt
+          ? "Uploading Receipt..."
+          : id
+          ? "Updating..."
+          : "Submitting..."}
+      </Text>
+    </>
+  ) : (
+    <>
+      <MaterialCommunityIcons
+        name={
+          id
+            ? "content-save-edit"
+            : "send"
+        }
+        size={22}
+        color="#FFFFFF"
+      />
 
-          {loading ? (
-
-            <ActivityIndicator
-              color="#FFFFFF"
-            />
-
-          ) : (
-
-            <>
-              <MaterialCommunityIcons
-                name="send"
-                size={22}
-                color="#FFFFFF"
-              />
-
-              <Text
-                style={
-                  styles.submitText
-                }
-              >
-                Submit Expense
-              </Text>
-            </>
-
-          )}
-
-        </TouchableOpacity>
+      <Text style={styles.submitText}>
+        {id
+          ? "Update Expense"
+          : "Submit Expense"}
+      </Text>
+    </>
+  )}
+</TouchableOpacity>
 
       </ScrollView>
 
